@@ -1,0 +1,67 @@
+#!/bin/bash
+
+if [ ! -d /opt/venv ]; then mkdir /opt/venv; fi
+source_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+deploy_path="$( cd /opt/venv && pwd )"
+
+# Installation ansible
+echo "--- Installation ansible"
+cd $deploy_path
+tar -xzvf ${source_path}/tarballs/ansible.tar.gz
+
+ln -nsf $deploy_path/ansible/bin/ansible /usr/bin/ansible
+ln -nsf $deploy_path/ansible/bin/ansible-playbook /usr/bin/ansible-playbook
+ln -nsf $deploy_path/ansible/bin/ansible-vault /usr/bin/ansible-vault
+ln -nsf $deploy_path/ansible/bin/ansible-galaxy /usr/bin/ansible-galaxy
+
+# Configuration ansible
+echo ""
+echo "-- Configuration ansible"
+if [ ! -d /etc/ansible ]; then mkdir /etc/ansible; fi
+if [ ! -d /var/log/ansible ]; then mkdir /var/log/ansible; fi
+if [ ! -d /opt/ansible ]; then mkdir /opt/ansible; fi
+
+echo "Add ansible.cfg"
+cat << EOF > /etc/ansible/ansible.cfg
+[defaults]
+inventory  = /etc/ansible/hosts
+roles_path = /opt/ansible/roles
+log_path = /var/log/ansible/ansible.log
+host_key_checking = False
+timeout = 120
+private_key_file = ~/.ssh/id_rsa
+ansible_managed = Ansible managed: {file} by {uid} on {host}
+deprecation_warnings = False
+
+[privilege_escalation]
+
+[paramiko_connection]
+
+[ssh_connection]
+ssh_args = -o ConnectionAttempts=20 -o ControlMaster=no -o ControlPersist=60s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+control_path = ~/.ssh/ansible/%%h-%%p-%%r
+scp_if_ssh = True
+
+[accelerate]
+
+[selinux]
+
+[colors]
+higlight = white
+verbose = blue
+warn = bright purple
+error = red
+debug = dark gray
+deprecate = purple
+skip = cyan
+unreachable = red
+ok = green
+changed = yellow
+diff_add = green
+diff_remove = red
+diff_lines = cyan
+EOF
+
+mkdir /etc/ansible/roles
+mkdir /etc/ansible/host_vars
+echo -e "[localhost]\nlocalhost ansible_connection=local" >> /etc/ansible/hosts
